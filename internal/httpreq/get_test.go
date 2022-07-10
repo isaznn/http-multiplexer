@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 )
@@ -19,9 +20,7 @@ func TestHttpReq_Get(t *testing.T) {
 		defer func() {
 			testServer.Close()
 		}()
-		h := NewHttpReq(&http.Client{
-			Timeout: 1 * time.Second,
-		})
+		h := NewHttpReq(&http.Client{})
 
 		// act
 		bodyBytes, err := h.Get(testServer.URL)
@@ -33,6 +32,29 @@ func TestHttpReq_Get(t *testing.T) {
 		bcomp := bytes.Compare(bodyBytes, []byte(body))
 		if bcomp != 0 {
 			t.Errorf("expected body '%s' but got '%s'", body, string(bodyBytes))
+		}
+	})
+
+	t.Run("timeout processing", func(t *testing.T) {
+		// arrange
+		testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+			time.Sleep(2 * time.Second)
+			res.WriteHeader(http.StatusOK)
+			res.Write([]byte("ok"))
+		}))
+		defer func() {
+			testServer.Close()
+		}()
+		h := NewHttpReq(&http.Client{
+			Timeout: 1 * time.Second,
+		})
+
+		// act
+		_, err := h.Get(testServer.URL)
+
+		// assert
+		if !os.IsTimeout(err) {
+			t.Error("timeout fail")
 		}
 	})
 }
