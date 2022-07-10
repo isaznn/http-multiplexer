@@ -3,3 +3,11 @@ GET http://localhost:8080/muxer
 
 ### 200 OK
 POST http://localhost:8080/muxer
+
+### Post urls
+POST http://localhost:8080/muxer
+Content-Type: application/json
+
+{"urls": [
+  "https://jsonplaceholder.typicode.com/posts"
+]}
