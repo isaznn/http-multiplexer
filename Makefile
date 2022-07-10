@@ -1,3 +1,7 @@
 .PHONY:run
 run:
-	go run cmd/server/main.go
+	SRV_PORT=8080 go run ./cmd/muxer/main.go
+
+.PHONY:build
+build:
+	go build -o muxer ./cmd/muxer/main.go
