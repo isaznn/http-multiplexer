@@ -1,0 +1,5 @@
+### 405 Method Not Allowed
+GET http://localhost:8080/muxer
+
+### 200 OK
+POST http://localhost:8080/muxer
