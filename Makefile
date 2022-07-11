@@ -8,4 +8,4 @@ build:
 
 .PHONY:test
 test:
-	go test ./internal/handler ./internal/httpreq
+	go test ./internal/handler ./internal/external

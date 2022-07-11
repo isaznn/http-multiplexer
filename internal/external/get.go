@@ -1,4 +1,4 @@
-package httpreq
+package external
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func (h *HttpReq) Get(url string) ([]byte, error) {
+func (h *External) Get(url string) ([]byte, error) {
 	httpReq, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err

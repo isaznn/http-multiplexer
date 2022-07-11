@@ -1,4 +1,4 @@
-package httpreq
+package external
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func TestHttpReq_Get(t *testing.T) {
+func TestExternal_Get(t *testing.T) {
 	t.Run("broken http client", func(t *testing.T) {
 		// arrange
 		body := "Hello World"
@@ -20,7 +20,7 @@ func TestHttpReq_Get(t *testing.T) {
 		defer func() {
 			testServer.Close()
 		}()
-		h := NewHttpReq(&http.Client{})
+		h := NewExternal(&http.Client{})
 
 		// act
 		bodyBytes, err := h.Get(testServer.URL)
@@ -45,7 +45,7 @@ func TestHttpReq_Get(t *testing.T) {
 		defer func() {
 			testServer.Close()
 		}()
-		h := NewHttpReq(&http.Client{
+		h := NewExternal(&http.Client{
 			Timeout: 1 * time.Second,
 		})
 

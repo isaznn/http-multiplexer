@@ -1,15 +1,26 @@
 package handler
 
-import "net/http"
+import (
+	"encoding/json"
+	"net/http"
+)
 
-type Handler struct {}
+type Muxer interface {
+	Mux(urls []string) (map[string]json.RawMessage, error)
+}
 
-func NewHandler() *Handler {
-	return &Handler{}
+type Handler struct {
+	mux Muxer
+}
+
+func NewHandler(m Muxer) *Handler {
+	return &Handler{
+		mux: m,
+	}
 }
 
 func (h *Handler) InitRouter() http.Handler {
 	r := http.NewServeMux()
-	r.HandleFunc("/muxer", h.MuxerHandler)
+	r.HandleFunc("/muxer", h.muxHandler)
 	return r
 }
