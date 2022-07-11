@@ -4,6 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync/atomic"
+)
+
+const (
+	IncDelta = 1
+	DecDelta = -1
 )
 
 type muxHandlerRequest struct {
@@ -16,9 +22,19 @@ type muxHandlerResponse struct {
 }
 
 func (h *Handler) muxHandler(w http.ResponseWriter, r *http.Request) {
+	// inc & dec request counter
+	atomic.AddInt32(&h.requestCounter, IncDelta)
+	defer atomic.AddInt32(&h.requestCounter, DecDelta)
+
+	// check count incoming requests
+	if h.requestCounter > h.requestLimit {
+		h.writeErrToJson(w,fmt.Errorf("too much requests"), http.StatusInternalServerError)
+		return
+	}
+
 	// check method
 	if r.Method != http.MethodPost {
-		http.Error(w,"allowed only post method", http.StatusMethodNotAllowed)
+		h.writeErrToJson(w,fmt.Errorf("allowed only post method"), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -41,7 +57,7 @@ func (h *Handler) muxHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// call service
-	result, err := h.mux.Mux(values.Urls)
+	result, err := h.Mux(values.Urls)
 	if err != nil {
 		h.writeErrToJson(w, err, http.StatusBadRequest)
 		return

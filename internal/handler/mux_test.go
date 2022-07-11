@@ -7,8 +7,13 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
+)
+
+const (
+	mockRequestLimit = 3
 )
 
 type MockService struct {}
@@ -49,7 +54,7 @@ func TestHandler_MuxerHandler(t *testing.T) {
 	t.Run("wrong method", func(t *testing.T) {
 		// arrange
 		s := &MockService{}
-		h := NewHandler(s)
+		h := NewHandler(mockRequestLimit, s)
 		r := h.InitRouter()
 		rr := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/muxer", nil)
@@ -82,7 +87,7 @@ func TestHandler_MuxerHandler(t *testing.T) {
 			testServer.Close()
 		}()
 		s := &MockService{}
-		h := NewHandler(s)
+		h := NewHandler(mockRequestLimit, s)
 		r := h.InitRouter()
 		rr := httptest.NewRecorder()
 		req := httptest.NewRequest(
@@ -107,7 +112,56 @@ func TestHandler_MuxerHandler(t *testing.T) {
 			t.Errorf(err.Error())
 		}
 		if testData.Value != testContent {
-			t.Errorf("expected Value '%s' but got '%s'", testContent, testData.Value)
+			t.Errorf("expected value '%s' but got '%s'", testContent, testData.Value)
+		}
+	})
+
+	t.Run("exceeding the request limit", func(t *testing.T) {
+		// arrange
+		totalRequests := 5
+		testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+			time.Sleep(100 * time.Millisecond)
+			res.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(res).Encode([]byte("ok"))
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+		}))
+		defer func() {
+			testServer.Close()
+		}()
+		s := &MockService{}
+		h := NewHandler(mockRequestLimit, s)
+		r := h.InitRouter()
+		var code200counter int
+		var code500counter int
+		var wg sync.WaitGroup
+
+		// act
+		wg.Add(totalRequests)
+		for i := 0; i < totalRequests; i++ {
+			go func() {
+				defer wg.Done()
+				rr := httptest.NewRecorder()
+				req:= httptest.NewRequest(
+					http.MethodPost,
+					"/muxer",
+					bytes.NewReader([]byte(fmt.Sprintf(`{"urls": ["%s"]}`, testServer.URL))),
+				)
+				r.ServeHTTP(rr, req)
+				switch rr.Code {
+				case 200:
+					code200counter++
+				case 500:
+					code500counter++
+				}
+			}()
+		}
+		wg.Wait()
+
+		// assert
+		if code200counter != mockRequestLimit || code500counter != (totalRequests - mockRequestLimit) {
+			t.Error("incorrect processing of the request limit")
 		}
 	})
 }

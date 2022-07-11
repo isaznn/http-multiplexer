@@ -12,6 +12,10 @@ import (
 	"github.com/isaznn/http-multiplexer/internal/service"
 )
 
+const (
+	requestLimit = 100
+)
+
 func main()  {
 	srvHost := "0.0.0.0"
 	srvPort := "8080"
@@ -28,7 +32,7 @@ func main()  {
 		Timeout: 1 * time.Second,
 	})
 	s := service.NewService(ex)
-	h := handler.NewHandler(s)
+	h := handler.NewHandler(requestLimit, s)
 
 	err := http.ListenAndServe(fmt.Sprintf("%s:%s", srvHost, srvPort), h.InitRouter())
 	if err != nil {

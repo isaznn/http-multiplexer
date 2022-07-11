@@ -10,12 +10,16 @@ type Muxer interface {
 }
 
 type Handler struct {
-	mux Muxer
+	requestLimit int32
+	requestCounter int32
+	Muxer
 }
 
-func NewHandler(m Muxer) *Handler {
+func NewHandler(requestLimit int32, m Muxer) *Handler {
 	return &Handler{
-		mux: m,
+		requestLimit:   requestLimit,
+		requestCounter: 0,
+		Muxer:          m,
 	}
 }
 
