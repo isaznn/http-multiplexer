@@ -51,6 +51,7 @@ func main()  {
 		}
 		close(idleConnectionsClosed)
 	}()
+	fmt.Printf("listen on port %s..", srvPort)
 	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalln(err)
 	}
