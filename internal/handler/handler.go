@@ -1,12 +1,12 @@
 package handler
 
 import (
-	"encoding/json"
+	"context"
 	"net/http"
 )
 
 type Muxer interface {
-	Mux(urls []string) (map[string]json.RawMessage, error)
+	Mux(ctx context.Context, urls []string) (map[string]string, error)
 }
 
 type Handler struct {

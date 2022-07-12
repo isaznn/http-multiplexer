@@ -1,20 +1,91 @@
 package service
 
 import (
-	"encoding/json"
+	"context"
+	"fmt"
+	"sync"
 )
 
-func (s *Service) Mux(urls []string) (map[string]json.RawMessage, error) {
-	result := make(map[string]json.RawMessage, len(urls))
+type safeMap struct {
+	M map[string]string
+	sync.Mutex
+}
 
-	for _, v := range urls {
-		bodyBytes, err := s.hr.Get(v)
-		if err != nil {
-			return nil, err
+func newSafeMap(l int) *safeMap {
+	return &safeMap{
+		M: make(map[string]string, l),
+	}
+}
+
+func (s *safeMap) AllEntities() map[string]string {
+	s.Lock()
+	defer s.Unlock()
+	return s.M
+}
+
+func (s *safeMap) Store(key string, value string) {
+	s.Lock()
+	defer s.Unlock()
+	s.M[key] = value
+}
+
+func (s *Service) chunks(urls []string) [][]string {
+	var dividedUrls [][]string
+	chunkSize := (len(urls) + s.concurrentRequestsLimit - 1) / s.concurrentRequestsLimit
+
+	for i := 0; i < len(urls); i += chunkSize {
+		end := i + chunkSize
+		if end > len(urls) {
+			end = len(urls)
 		}
 
-		result[v] = bodyBytes
+		dividedUrls = append(dividedUrls, urls[i:end])
 	}
 
-	return result, nil
+	return dividedUrls
+}
+
+func (s *Service) Mux(ctx context.Context, urls []string) (map[string]string, error) {
+	m := newSafeMap(len(urls))
+	chunks := s.chunks(urls)
+	wrpCtx, cancel := context.WithCancel(ctx)
+	errCh := make(chan struct{})
+	wg := sync.WaitGroup{}
+	isError := false
+
+	// if received error - cancel context
+	go func() {
+		<-errCh
+		isError = true
+		cancel()
+	}()
+
+	// push chunks to goroutines
+	for _, chunk := range chunks {
+		wg.Add(1)
+		go func(urls []string) {
+			defer wg.Done()
+			for _, url := range urls {
+				select {
+				case <-wrpCtx.Done():
+					return
+				default:
+					bodyBytes, err := s.Get(url)
+					if err != nil {
+						errCh <- struct{}{}
+						return
+					}
+					m.Store(url, string(bodyBytes))
+				}
+			}
+		}(chunk)
+	}
+	wg.Wait()
+
+	switch isError {
+	case true:
+		return nil, fmt.Errorf("request ended with an error")
+	default:
+		return m.AllEntities(), nil
+	}
 }

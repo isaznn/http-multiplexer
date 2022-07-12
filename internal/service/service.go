@@ -5,11 +5,13 @@ type HttpRequester interface {
 }
 
 type Service struct {
-	hr HttpRequester
+	concurrentRequestsLimit int
+	HttpRequester
 }
 
-func NewService(hr HttpRequester) *Service {
+func NewService(concurrentRequestsLimit int, hr HttpRequester) *Service {
 	return &Service{
-		hr: hr,
+		concurrentRequestsLimit: concurrentRequestsLimit,
+		HttpRequester:           hr,
 	}
 }

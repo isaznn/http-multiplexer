@@ -17,8 +17,8 @@ type muxHandlerRequest struct {
 }
 
 type muxHandlerResponse struct {
-	Error  bool                       `json:"error"`
-	Result map[string]json.RawMessage `json:"result"`
+	Error  bool              `json:"error"`
+	Result map[string]string `json:"result"`
 }
 
 func (h *Handler) muxHandler(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +57,7 @@ func (h *Handler) muxHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// call service
-	result, err := h.Mux(values.Urls)
+	result, err := h.Mux(r.Context(), values.Urls)
 	if err != nil {
 		h.writeErrToJson(w, err, http.StatusBadRequest)
 		return

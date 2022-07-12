@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/isaznn/http-multiplexer/internal/external"
@@ -14,6 +16,7 @@ import (
 
 const (
 	requestLimit = 100
+	concurrentRequestsLimit = 4
 )
 
 func main()  {
@@ -31,11 +34,27 @@ func main()  {
 	ex := external.NewExternal(&http.Client{
 		Timeout: 1 * time.Second,
 	})
-	s := service.NewService(ex)
+	s := service.NewService(concurrentRequestsLimit, ex)
 	h := handler.NewHandler(requestLimit, s)
+	httpServer := http.Server{
+		Addr:    fmt.Sprintf("%s:%s", srvHost, srvPort),
+		Handler: h.InitRouter(),
+	}
 
-	err := http.ListenAndServe(fmt.Sprintf("%s:%s", srvHost, srvPort), h.InitRouter())
-	if err != nil {
+	idleConnectionsClosed := make(chan struct{})
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+		if err := httpServer.Shutdown(context.Background()); err != nil {
+			log.Fatalln(err)
+		}
+		close(idleConnectionsClosed)
+	}()
+	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatalln(err)
 	}
+
+	<-idleConnectionsClosed
+	fmt.Println("server stopped successfully")
 }
