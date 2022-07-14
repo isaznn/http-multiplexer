@@ -2,11 +2,17 @@ package external
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
+)
+
+const (
+	mockTimeoutSec = 1
 )
 
 func TestExternal_Get(t *testing.T) {
@@ -20,41 +26,66 @@ func TestExternal_Get(t *testing.T) {
 		defer func() {
 			testServer.Close()
 		}()
-		h := NewExternal(&http.Client{})
+		ex := NewExternal(&http.Client{
+			Timeout: mockTimeoutSec * time.Second,
+		})
 
 		// act
-		bodyBytes, err := h.Get(testServer.URL)
+		bodyBytes, err := ex.Get(testServer.URL)
 
 		// assert
 		if err != nil {
 			t.Error(err)
 		}
-		bcomp := bytes.Compare(bodyBytes, []byte(body))
-		if bcomp != 0 {
+		bComp := bytes.Compare(bodyBytes, []byte(body))
+		if bComp != 0 {
 			t.Errorf("expected body '%s' but got '%s'", body, string(bodyBytes))
 		}
 	})
 
 	t.Run("timeout processing", func(t *testing.T) {
 		// arrange
-		testServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		testServerSlow := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 			time.Sleep(1100 * time.Millisecond)
 			res.WriteHeader(http.StatusOK)
 			res.Write([]byte("ok"))
 		}))
 		defer func() {
-			testServer.Close()
+			testServerSlow.Close()
 		}()
-		h := NewExternal(&http.Client{
-			Timeout: 1 * time.Second,
+		ex := NewExternal(&http.Client{
+			Timeout: mockTimeoutSec * time.Second,
 		})
 
 		// act
-		_, err := h.Get(testServer.URL)
+		_, err := ex.Get(testServerSlow.URL)
 
 		// assert
 		if !os.IsTimeout(err) {
 			t.Error("timeout fail")
+		}
+	})
+
+	t.Run("bad status processing", func(t *testing.T) {
+		// arrange
+		testServerBad := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+			res.WriteHeader(http.StatusBadRequest)
+			res.Write([]byte("error"))
+		}))
+		defer func() {
+			testServerBad.Close()
+		}()
+		expectedErr := fmt.Errorf("request with url %s have status code 400 Bad Request", testServerBad.URL)
+		ex := NewExternal(&http.Client{
+			Timeout: mockTimeoutSec * time.Second,
+		})
+
+		// act
+		_, err := ex.Get(testServerBad.URL)
+
+		// assert
+		if !errors.As(err, &expectedErr) {
+			t.Error("expected and returned errors do not match")
 		}
 	})
 }
