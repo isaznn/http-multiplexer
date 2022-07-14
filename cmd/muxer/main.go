@@ -17,6 +17,7 @@ import (
 const (
 	requestLimit = 100
 	concurrentRequestsLimit = 4
+	httpClientTimeoutSec = 1
 )
 
 func main()  {
@@ -32,7 +33,7 @@ func main()  {
 	}
 
 	ex := external.NewExternal(&http.Client{
-		Timeout: 1 * time.Second,
+		Timeout: httpClientTimeoutSec * time.Second,
 	})
 	s := service.NewService(concurrentRequestsLimit, ex)
 	h := handler.NewHandler(requestLimit, s)

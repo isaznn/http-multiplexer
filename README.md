@@ -5,6 +5,7 @@ Concurrent multiplexer for HTTP requests using Go 1.18.
 Limits (configured via constants in main.go):
 - 100 concurrent incoming HTTP requests
 - 4 simultaneous outgoing requests per incoming request
+- 1 second HTTP client timeout
 
 ## Data structure
 
@@ -46,7 +47,7 @@ curl -X POST http://localhost:8080/muxer \
     -d '{"urls": ["https://jsonplaceholder.typicode.com/posts"]}'
 ```
 
-## Build & Test
+## Test & Run
 
 ### with make
 
@@ -61,3 +62,10 @@ make run
 ./docker_test.sh
 ./docker_run.sh
 ```
+
+## Build
+
+```
+make build
+```
+Put `muxer` in `./bin` directory

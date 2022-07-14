@@ -4,7 +4,7 @@ run:
 
 .PHONY:build
 build:
-	go build -o muxer ./cmd/muxer/main.go
+	go build -o ./bin/muxer ./cmd/muxer/main.go
 
 .PHONY:test
 test:
