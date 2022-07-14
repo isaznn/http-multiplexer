@@ -37,8 +37,10 @@ func (s *safeMap) Store(key string, value string) {
 }
 
 func (s *Service) chunks(urls []string) [][]string {
-	var dividedUrls [][]string
-	chunkSize := (len(urls) + s.concurrentRequestsLimit - 1) / s.concurrentRequestsLimit
+	var (
+		dividedUrls [][]string
+		chunkSize = (len(urls) + s.concurrentRequestsLimit - 1) / s.concurrentRequestsLimit
+	)
 
 	for i := 0; i < len(urls); i += chunkSize {
 		end := i + chunkSize
@@ -59,7 +61,7 @@ func (s *Service) Mux(ctx context.Context, urls []string) (map[string]string, er
 		errCtx, cancel = context.WithCancel(context.Background())
 		errCh = make(chan struct{})
 		errCounter int32
-		ctxCancelCounter int32
+		cancelCounter int32
 		wg sync.WaitGroup
 	)
 
@@ -77,7 +79,7 @@ func (s *Service) Mux(ctx context.Context, urls []string) (map[string]string, er
 			for _, url := range urls {
 				select {
 				case <-ctx.Done():
-					atomic.AddInt32(&ctxCancelCounter, IncDelta)
+					atomic.AddInt32(&cancelCounter, IncDelta)
 					return
 				case <-errCtx.Done():
 					return
@@ -95,7 +97,7 @@ func (s *Service) Mux(ctx context.Context, urls []string) (map[string]string, er
 	}
 	wg.Wait()
 
-	if ctxCancelCounter > 0 {
+	if cancelCounter > 0 {
 		return nil, fmt.Errorf(contextErrorText)
 	}
 	if errCounter > 0 {
