@@ -6,6 +6,7 @@ Limits (configured via constants in main.go):
 - 100 concurrent incoming HTTP requests
 - 4 simultaneous outgoing requests per incoming request
 - 1 second HTTP client timeout
+- 20 urls per request
 
 ## Data structure
 

@@ -10,7 +10,7 @@ type apiError struct {
 	ErrorMessage string `json:"errorMessage"`
 }
 
-func (h *Handler) writeErrToJson(w http.ResponseWriter, err error, httpStatus int) {
+func (h *Handler) errResponse(w http.ResponseWriter, err error, httpStatus int) {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(httpStatus)
 	json.NewEncoder(w).Encode(apiError{

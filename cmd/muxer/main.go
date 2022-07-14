@@ -18,6 +18,7 @@ const (
 	requestLimit = 100
 	concurrentRequestsLimit = 4
 	httpClientTimeoutSec = 1
+	urlPerRequestLimit = 20
 )
 
 func main()  {
@@ -36,7 +37,7 @@ func main()  {
 		Timeout: httpClientTimeoutSec * time.Second,
 	})
 	s := service.NewService(concurrentRequestsLimit, ex)
-	h := handler.NewHandler(requestLimit, s)
+	h := handler.NewHandler(requestLimit, urlPerRequestLimit, s)
 	httpServer := http.Server{
 		Addr:    fmt.Sprintf("%s:%s", srvHost, srvPort),
 		Handler: h.InitRouter(),

@@ -22,19 +22,19 @@ type muxHandlerResponse struct {
 }
 
 func (h *Handler) muxHandler(w http.ResponseWriter, r *http.Request) {
+	// check count incoming requests
+	if h.requestCounter >= h.requestLimit {
+		h.errResponse(w,fmt.Errorf("too much requests"), http.StatusInternalServerError)
+		return
+	}
+
 	// inc & dec request counter
 	atomic.AddInt32(&h.requestCounter, IncDelta)
 	defer atomic.AddInt32(&h.requestCounter, DecDelta)
 
-	// check count incoming requests
-	if h.requestCounter > h.requestLimit {
-		h.writeErrToJson(w,fmt.Errorf("too much requests"), http.StatusInternalServerError)
-		return
-	}
-
 	// check method
 	if r.Method != http.MethodPost {
-		h.writeErrToJson(w,fmt.Errorf("allowed only post method"), http.StatusMethodNotAllowed)
+		h.errResponse(w,fmt.Errorf("allowed only post method"), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -42,24 +42,21 @@ func (h *Handler) muxHandler(w http.ResponseWriter, r *http.Request) {
 	values := muxHandlerRequest{}
 	err := json.NewDecoder(r.Body).Decode(&values)
 	if err != nil {
-		h.writeErrToJson(w, err, http.StatusBadRequest)
+		h.errResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	// validate
-	if len(values.Urls) < 1 {
-		h.writeErrToJson(w, fmt.Errorf("empty array"), http.StatusNotAcceptable)
-		return
-	}
-	if len(values.Urls) > 20 {
-		h.writeErrToJson(w, fmt.Errorf("urls too much"), http.StatusNotAcceptable)
+	err = h.muxValidate(&values)
+	if err != nil {
+		h.errResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
 	// call service
 	result, err := h.Mux(r.Context(), values.Urls)
 	if err != nil {
-		h.writeErrToJson(w, err, http.StatusBadRequest)
+		h.errResponse(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -70,7 +67,7 @@ func (h *Handler) muxHandler(w http.ResponseWriter, r *http.Request) {
 		Result: result,
 	})
 	if err != nil {
-		h.writeErrToJson(w, err, http.StatusInternalServerError)
+		h.errResponse(w, err, http.StatusInternalServerError)
 		return
 	}
 	return
