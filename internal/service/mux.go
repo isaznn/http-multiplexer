@@ -7,6 +7,10 @@ import (
 	"sync/atomic"
 )
 
+const (
+	IncDelta = 1
+)
+
 type safeMap struct {
 	M map[string]string
 	sync.Mutex
@@ -74,7 +78,7 @@ func (s *Service) Mux(ctx context.Context, urls []string) (map[string]string, er
 				default:
 					bodyBytes, err := s.Get(url)
 					if err != nil {
-						atomic.AddInt32(&errCounter, 1)
+						atomic.AddInt32(&errCounter, IncDelta)
 						errCh <- struct{}{}
 						return
 					}
