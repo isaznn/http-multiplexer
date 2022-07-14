@@ -74,7 +74,7 @@ func TestService_Mux(t *testing.T) {
 
 		// act
 		go func() {
-			time.Sleep(time.Millisecond * 10)
+			time.Sleep(time.Millisecond * (mockGetDelayMs / 3))
 			cancel()
 		}()
 		_, err := s.Mux(ctx, urls)
