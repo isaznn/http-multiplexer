@@ -8,6 +8,8 @@ import (
 )
 
 const (
+	contextErrorText = "canceled with context"
+	requestErrorText = "request ended with an error"
 	IncDelta = 1
 )
 
@@ -54,9 +56,10 @@ func (s *Service) Mux(ctx context.Context, urls []string) (map[string]string, er
 	var (
 		m = newSafeMap(len(urls))
 		chunks = s.chunks(urls)
-		wrpCtx, cancel = context.WithCancel(ctx)
+		errCtx, cancel = context.WithCancel(context.Background())
 		errCh = make(chan struct{})
 		errCounter int32
+		ctxCancelCounter int32
 		wg sync.WaitGroup
 	)
 
@@ -73,7 +76,10 @@ func (s *Service) Mux(ctx context.Context, urls []string) (map[string]string, er
 			defer wg.Done()
 			for _, url := range urls {
 				select {
-				case <-wrpCtx.Done():
+				case <-ctx.Done():
+					atomic.AddInt32(&ctxCancelCounter, IncDelta)
+					return
+				case <-errCtx.Done():
 					return
 				default:
 					bodyBytes, err := s.Get(url)
@@ -89,10 +95,13 @@ func (s *Service) Mux(ctx context.Context, urls []string) (map[string]string, er
 	}
 	wg.Wait()
 
-	switch {
-	case errCounter > 0:
-		return nil, fmt.Errorf("request ended with an error")
-	default:
-		return m.AllEntities(), nil
+	if ctxCancelCounter > 0 {
+		return nil, fmt.Errorf(contextErrorText)
 	}
+	if errCounter > 0 {
+		return nil, fmt.Errorf(requestErrorText)
+	}
+
+	return m.AllEntities(), nil
+
 }

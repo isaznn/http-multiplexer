@@ -46,7 +46,7 @@ func TestExternal_Get(t *testing.T) {
 	t.Run("timeout processing", func(t *testing.T) {
 		// arrange
 		testServerSlow := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-			time.Sleep(time.Duration(mockTimeoutMs + 5) * time.Millisecond)
+			time.Sleep((mockTimeoutMs + (mockTimeoutMs / 3)) * time.Millisecond)
 			res.WriteHeader(http.StatusOK)
 			res.Write([]byte("ok"))
 		}))

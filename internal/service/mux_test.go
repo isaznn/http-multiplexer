@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -16,7 +17,7 @@ const (
 /*
 * Mock Get return JSON with timestamp and received url by default
 * and return error if <url> contains path /bad
-* with 30 ms delay
+* with delay
 */
 type mockExternal struct {}
 func (ex *mockExternal) Get(url string) ([]byte, error) {
@@ -61,6 +62,26 @@ func TestService_Mux(t *testing.T) {
 		}
 		if time.Since(timeNow) > time.Duration(len(urls) * mockGetDelayMs + 5) * time.Millisecond {
 			t.Error("execution time exceeded")
+		}
+	})
+
+	t.Run("context cancel error", func(t *testing.T) {
+		expectedErr := fmt.Errorf(contextErrorText)
+		timeNow := time.Now()
+		ctx, cancel := context.WithCancel(context.Background())
+		urls := []string{"https://example1.com", "https://example2.com", "https://example3.com", "https://example4.com", "https://example5.com", "https://example6.com"}
+		s := NewService(mockConcurrentRequestsLimit, &mockExternal{})
+
+		// act
+		go func() {
+			time.Sleep(time.Millisecond * 10)
+			cancel()
+		}()
+		_, err := s.Mux(ctx, urls)
+
+		// assert
+		if !errors.As(err, &expectedErr) || time.Since(timeNow) > time.Duration(mockGetDelayMs + (mockGetDelayMs / 3)) * time.Millisecond {
+			t.Errorf("cancel context not handled")
 		}
 	})
 }
