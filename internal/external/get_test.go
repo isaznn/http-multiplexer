@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	mockTimeoutSec = 1
+	mockTimeoutMs = 30
 )
 
 func TestExternal_Get(t *testing.T) {
@@ -27,7 +27,7 @@ func TestExternal_Get(t *testing.T) {
 			testServer.Close()
 		}()
 		ex := NewExternal(&http.Client{
-			Timeout: mockTimeoutSec * time.Second,
+			Timeout: mockTimeoutMs * time.Millisecond,
 		})
 
 		// act
@@ -46,7 +46,7 @@ func TestExternal_Get(t *testing.T) {
 	t.Run("timeout processing", func(t *testing.T) {
 		// arrange
 		testServerSlow := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-			time.Sleep(1100 * time.Millisecond)
+			time.Sleep(time.Duration(mockTimeoutMs + 5) * time.Millisecond)
 			res.WriteHeader(http.StatusOK)
 			res.Write([]byte("ok"))
 		}))
@@ -54,7 +54,7 @@ func TestExternal_Get(t *testing.T) {
 			testServerSlow.Close()
 		}()
 		ex := NewExternal(&http.Client{
-			Timeout: mockTimeoutSec * time.Second,
+			Timeout: mockTimeoutMs * time.Millisecond,
 		})
 
 		// act
@@ -77,7 +77,7 @@ func TestExternal_Get(t *testing.T) {
 		}()
 		expectedErr := fmt.Errorf("request with url %s have status code 400 Bad Request", testServerBad.URL)
 		ex := NewExternal(&http.Client{
-			Timeout: mockTimeoutSec * time.Second,
+			Timeout: mockTimeoutMs * time.Millisecond,
 		})
 
 		// act

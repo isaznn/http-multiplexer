@@ -6,13 +6,13 @@ import (
 	"net/http"
 )
 
-func (h *External) Get(url string) ([]byte, error) {
+func (ex *External) Get(url string) ([]byte, error) {
 	httpReq, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	httpResp, err := h.httpClient.Do(httpReq)
+	httpResp, err := ex.httpClient.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}
