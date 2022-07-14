@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -102,12 +103,14 @@ func TestHandler_MuxerHandler(t *testing.T) {
 
 	t.Run("exceeding the request limit", func(t *testing.T) {
 		// arrange
-		totalRequests := 5
+		var (
+			totalRequests = 5
+			code200counter int32
+			code500counter int32
+			wg sync.WaitGroup
+		)
 		h := NewHandler(mockRequestLimit, urlPerRequestLimit, &mockService{})
 		r := h.InitRouter()
-		var code200counter int
-		var code500counter int
-		var wg sync.WaitGroup
 
 		// act
 		for i := 0; i < totalRequests; i++ {
@@ -119,16 +122,17 @@ func TestHandler_MuxerHandler(t *testing.T) {
 				r.ServeHTTP(rr, req)
 				switch rr.Code {
 				case 200:
-					code200counter++
+					atomic.AddInt32(&code200counter, IncDelta)
 				case 500:
-					code500counter++
+					atomic.AddInt32(&code500counter, IncDelta)
 				}
 			}()
+			time.Sleep(100000 * time.Nanosecond)
 		}
 		wg.Wait()
 
 		// assert
-		if code200counter != mockRequestLimit || code500counter != (totalRequests - mockRequestLimit) {
+		if code200counter != mockRequestLimit || code500counter != int32(totalRequests - mockRequestLimit) {
 			t.Error("incorrect handling of the request limit")
 		}
 	})

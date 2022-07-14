@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 )
 
 type safeMap struct {
@@ -46,17 +47,18 @@ func (s *Service) chunks(urls []string) [][]string {
 }
 
 func (s *Service) Mux(ctx context.Context, urls []string) (map[string]string, error) {
-	m := newSafeMap(len(urls))
-	chunks := s.chunks(urls)
-	wrpCtx, cancel := context.WithCancel(ctx)
-	errCh := make(chan struct{})
-	wg := sync.WaitGroup{}
-	isError := false
+	var (
+		m = newSafeMap(len(urls))
+		chunks = s.chunks(urls)
+		wrpCtx, cancel = context.WithCancel(ctx)
+		errCh = make(chan struct{})
+		errCounter int32
+		wg sync.WaitGroup
+	)
 
 	// if received error - cancel context
 	go func() {
 		<-errCh
-		isError = true
 		cancel()
 	}()
 
@@ -72,6 +74,7 @@ func (s *Service) Mux(ctx context.Context, urls []string) (map[string]string, er
 				default:
 					bodyBytes, err := s.Get(url)
 					if err != nil {
+						atomic.AddInt32(&errCounter, 1)
 						errCh <- struct{}{}
 						return
 					}
@@ -82,8 +85,8 @@ func (s *Service) Mux(ctx context.Context, urls []string) (map[string]string, er
 	}
 	wg.Wait()
 
-	switch isError {
-	case true:
+	switch {
+	case errCounter > 0:
 		return nil, fmt.Errorf("request ended with an error")
 	default:
 		return m.AllEntities(), nil

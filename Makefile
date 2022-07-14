@@ -8,4 +8,4 @@ build:
 
 .PHONY:test
 test:
-	go test -count=1 ./internal/external ./internal/service ./internal/handler
+	go test -count=10 ./internal/external ./internal/service ./internal/handler
