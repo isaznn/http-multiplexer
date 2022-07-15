@@ -33,8 +33,15 @@ func main()  {
 		srvPort = pathPort
 	}
 
+	// tuning round tripper
+	httpTransport := http.DefaultTransport.(*http.Transport).Clone()
+	httpTransport.MaxIdleConns = requestLimit * concurrentRequestsLimit
+	httpTransport.MaxConnsPerHost = requestLimit * concurrentRequestsLimit
+	httpTransport.MaxIdleConnsPerHost = requestLimit * concurrentRequestsLimit
+
 	ex := external.NewExternal(&http.Client{
-		Timeout: httpClientTimeoutSec * time.Second,
+		Timeout:   httpClientTimeoutSec * time.Second,
+		Transport: httpTransport,
 	})
 	s := service.NewService(concurrentRequestsLimit, ex)
 	h := handler.NewHandler(requestLimit, urlPerRequestLimit, s)
